@@ -1,0 +1,8 @@
+{
+  "name": "lynx-explorer-ios",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build:homepage": "pnpm --filter homepage build"
+  }
+}

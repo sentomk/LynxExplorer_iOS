@@ -12,3 +12,5 @@ homepage/node_modules/
 homepage/dist/
 
 *.xcresult
+
+node_modules/

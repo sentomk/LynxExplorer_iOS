@@ -8,6 +8,7 @@ repo_root=$(cd "$script_dir/.." && pwd -P)
 lynx_root="${LYNX_ROOT:-$repo_root/lynx}"
 homepage_dir="$repo_root/homepage"
 resource_dir="$script_dir/LynxExplorer/Resource"
+gemfile_path="$lynx_root/Gemfile"
 
 echo "repo_root: $repo_root"
 echo "lynx_root: $lynx_root"
@@ -72,6 +73,8 @@ enable_trace_param=$([ $enable_trace == true ] && echo "--enable-trace" || echo 
 handle_options "$@"
 require_path "$lynx_root/tools/ios_tools/generate_podspec_scripts_by_gn.py" \
     "Missing lynx checkout. Clone lynx into $repo_root/lynx or set LYNX_ROOT."
+require_path "$gemfile_path" \
+    "Missing Gemfile in lynx checkout at $gemfile_path."
 require_path "$homepage_dir/package.json" \
     "Missing homepage sources at $homepage_dir."
 
@@ -90,6 +93,7 @@ popd
 # prepare source cache
 export COCOAPODS_CONVERT_GIT_TO_HTTP=false
 export LANG=en_US.UTF-8
+export BUNDLE_GEMFILE="$gemfile_path"
 pushd "$script_dir"
 SDKROOT=/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk bundle install -V --path="$repo_root/.bundle"
 bundle exec pod deintegrate "$project_name"

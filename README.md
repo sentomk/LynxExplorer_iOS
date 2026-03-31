@@ -22,23 +22,26 @@ This repository is based on the `lynx` source tree at commit [`faeec5c7b8e21be2c
 - Ruby and Bundler
 - Python 3.9 or later
 - Node.js and pnpm
-- A local `lynx` checkout pinned to commit `faeec5c7b8e21be2c906d4a9b32d80df596deeb3`
 
-## Set up the Lynx dependency
+## Clone the upstream Lynx source tree
 
-Clone `lynx` next to this repository, or point `LYNX_ROOT` to an existing checkout.
+LynxExplorer_iOS is not a fully standalone runtime repository. Before you build the app, clone the upstream `lynx` repository and check out the required commit.
 
 ```bash
 cd ~/Code
-git clone https://github.com/lynx-family/lynx.git lynx
+git clone https://github.com/lynx-family/lynx.git
 git -C lynx checkout faeec5c7b8e21be2c906d4a9b32d80df596deeb3
 ```
 
-If you keep `lynx` elsewhere, export `LYNX_ROOT` before running the setup script.
+## Set up the Lynx dependency
+
+Set `LYNX_ROOT` to the local `lynx` checkout before running the setup script.
 
 ```bash
-export LYNX_ROOT=/path/to/lynx
+export LYNX_ROOT=~/Code/lynx
 ```
+
+If you keep `lynx` elsewhere, point `LYNX_ROOT` to that path instead.
 
 ## Build the app
 
