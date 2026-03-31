@@ -19,9 +19,11 @@ This repository is based on the `lynx` source tree at commit [`faeec5c7b8e21be2c
 ## Prerequisites
 
 - macOS with Xcode 15.0 or later
+- Git
 - Ruby and Bundler
 - Python 3.9 or later
-- Node.js and pnpm
+- PyYAML for Python
+- Node.js, Corepack, and pnpm
 
 ## Clone the upstream Lynx source tree
 
@@ -43,12 +45,24 @@ export LYNX_ROOT=~/Code/lynx
 
 If you keep `lynx` elsewhere, point `LYNX_ROOT` to that path instead.
 
+## Initialize the repository
+
+Run the bootstrap script from the repository root.
+
+```bash
+./bootstrap.sh
+```
+
+The script validates the local build environment before you install iOS dependencies. It checks:
+
+- Git, Xcode, and Command Line Tools
+- Python 3.9 or later and the `yaml` module
+- Ruby, Bundler, Node.js, Corepack, and pnpm
+- `LYNX_ROOT`, the required upstream files, and the pinned `lynx` commit
+
 ## Build the app
 
-1. Install homepage dependencies and generate the homepage bundle.
-2. Generate the Lynx podspecs from the pinned `lynx` checkout.
-3. Install CocoaPods dependencies.
-4. Open the workspace in Xcode.
+After `bootstrap.sh` passes, install the homepage bundle and CocoaPods dependencies.
 
 ```bash
 cd app
