@@ -20,6 +20,7 @@ declare global {
       openSchema(url: string): void;
       readClipboardText?(): string;
       readFromLocalStorage?(key: string): string;
+      saveToLocalStorage?(key: string, value: string): void;
       getSettingInfo(): Record<string, unknown>;
       setThreadMode(index: number): void;
       saveThemePreferences(key: string, value: string): void;

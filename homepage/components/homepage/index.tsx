@@ -2,7 +2,7 @@
 // Licensed under the Apache License Version 2.0 that can be found in the
 // LICENSE file in the root directory of this source tree.
 
-import { useEffect, useState } from '@lynx-js/react';
+import { useEffect, useRef, useState } from '@lynx-js/react';
 import './index.scss';
 
 import ExplorerIconDark from '@assets/images/explorer-dark.png?inline';
@@ -22,6 +22,9 @@ interface HomePageProps {
 const RECENT_SCHEMAS_STORAGE_KEY = 'recentSchemas';
 const MAX_RECENT_SCHEMAS = 3;
 const HTTP_SCHEMA_PATTERN = /^https?:\/\//i;
+const LOCAL_SCHEMA_PATTERN = /^file:\/\/lynx\?local:\/\//i;
+const RECENT_DELETE_ACTION_WIDTH = 88;
+const RECENT_SWIPE_OPEN_THRESHOLD = 44;
 
 function getExplorerModule() {
   if (typeof NativeModules !== 'undefined') {
@@ -45,6 +48,13 @@ function readRecentSchemas(): string[] {
   return [];
 }
 
+function writeRecentSchemas(recentSchemas: string[]) {
+  getExplorerModule()?.saveToLocalStorage?.(
+    RECENT_SCHEMAS_STORAGE_KEY,
+    JSON.stringify(recentSchemas)
+  );
+}
+
 function isSameRecentSchemas(left: string[], right: string[]) {
   if (left.length !== right.length) {
     return false;
@@ -57,13 +67,57 @@ function isSameRecentSchemas(left: string[], right: string[]) {
   return true;
 }
 
+function clamp(value: number, min: number, max: number) {
+  return Math.min(max, Math.max(min, value));
+}
+
+function isSupportedBundleUrl(url: string) {
+  const normalizedUrl = url.trim();
+  if (!normalizedUrl) {
+    return false;
+  }
+  return HTTP_SCHEMA_PATTERN.test(normalizedUrl) || LOCAL_SCHEMA_PATTERN.test(normalizedUrl);
+}
+
+function getRecentDisplayText(url: string) {
+  try {
+    const parsedUrl = new URL(url);
+    const primaryText = parsedUrl.host || parsedUrl.hostname || url;
+    const pathText = `${parsedUrl.pathname || '/'}${parsedUrl.search || ''}`;
+    return {
+      primaryText,
+      secondaryText: pathText === '' ? url : pathText,
+    };
+  } catch {
+    return {
+      primaryText: url,
+      secondaryText: '',
+    };
+  }
+}
+
 export default function HomePage(props: HomePageProps) {
   const { resolved, withTheme } = useTheme();
   const safeArea = useSafeArea();
   const [inputValue, setInputValue] = useState('');
+  const [inputError, setInputError] = useState('');
   const [recentSchemas, setRecentSchemas] = useState<string[]>(
     () => readRecentSchemas()
   );
+  const [openRecentUrl, setOpenRecentUrl] = useState<string | null>(null);
+  const [activeSwipeUrl, setActiveSwipeUrl] = useState<string | null>(null);
+  const [activeSwipeOffset, setActiveSwipeOffset] = useState(0);
+  const recentSwipeRef = useRef<{
+    url: string | null;
+    startX: number;
+    initialOffset: number;
+    currentOffset: number;
+  }>({
+    url: null,
+    startX: 0,
+    initialOffset: 0,
+    currentOffset: 0,
+  });
 
   useEffect(() => {
     const syncRecentSchemas = () => {
@@ -77,6 +131,12 @@ export default function HomePage(props: HomePageProps) {
     const timerId = setInterval(syncRecentSchemas, 1000);
     return () => clearInterval(timerId);
   }, []);
+
+  useEffect(() => {
+    if (openRecentUrl && !recentSchemas.includes(openRecentUrl)) {
+      setOpenRecentUrl(null);
+    }
+  }, [openRecentUrl, recentSchemas]);
 
   const icons = {
     Scan: { dark: ScanIconDark, light: ScanIcon },
@@ -93,17 +153,108 @@ export default function HomePage(props: HomePageProps) {
     'background only';
     const normalizedUrl = url.trim();
     if (!normalizedUrl) {
+      setInputError('Enter a bundle URL to continue.');
       return;
     }
 
+    if (!isSupportedBundleUrl(normalizedUrl)) {
+      setInputError('Enter a valid http(s) bundle URL or a file://lynx local bundle URL.');
+      return;
+    }
+
+    setInputError('');
     if (HTTP_SCHEMA_PATTERN.test(normalizedUrl)) {
       setRecentSchemas((prev) => {
-        const next = [normalizedUrl, ...prev.filter((item) => item !== normalizedUrl)];
-        return next.slice(0, MAX_RECENT_SCHEMAS);
+        const next = [normalizedUrl, ...prev.filter((item) => item !== normalizedUrl)].slice(
+          0,
+          MAX_RECENT_SCHEMAS
+        );
+        writeRecentSchemas(next);
+        return next;
       });
     }
     setInputValue(normalizedUrl);
     openSchema(normalizedUrl);
+  };
+
+  const removeRecentSchema = (url: string) => {
+    'background only';
+    if (openRecentUrl === url) {
+      setOpenRecentUrl(null);
+    }
+    setRecentSchemas((prev) => {
+      const next = prev.filter((item) => item !== url);
+      writeRecentSchemas(next);
+      return next;
+    });
+  };
+
+  const handleRecentTouchStart = (url: string, event: { detail: { x: number } }) => {
+    'background only';
+    const initialOffset = openRecentUrl === url ? -RECENT_DELETE_ACTION_WIDTH : 0;
+    recentSwipeRef.current = {
+      url,
+      startX: event.detail.x,
+      initialOffset,
+      currentOffset: initialOffset,
+    };
+    if (openRecentUrl && openRecentUrl !== url) {
+      setOpenRecentUrl(null);
+    }
+    setActiveSwipeUrl(url);
+    setActiveSwipeOffset(initialOffset);
+  };
+
+  const handleRecentTouchMove = (url: string, event: { detail: { x: number } }) => {
+    'background only';
+    if (recentSwipeRef.current.url !== url) {
+      return;
+    }
+    const deltaX = event.detail.x - recentSwipeRef.current.startX;
+    const nextOffset = clamp(
+      recentSwipeRef.current.initialOffset + deltaX,
+      -RECENT_DELETE_ACTION_WIDTH,
+      0
+    );
+    recentSwipeRef.current.currentOffset = nextOffset;
+    setActiveSwipeOffset(nextOffset);
+  };
+
+  const finalizeRecentSwipe = (url: string) => {
+    'background only';
+    if (recentSwipeRef.current.url !== url) {
+      return;
+    }
+    const shouldOpen =
+      recentSwipeRef.current.currentOffset <= -RECENT_SWIPE_OPEN_THRESHOLD;
+    setOpenRecentUrl(shouldOpen ? url : null);
+    setActiveSwipeUrl(null);
+    setActiveSwipeOffset(0);
+    recentSwipeRef.current = {
+      url: null,
+      startX: 0,
+      initialOffset: 0,
+      currentOffset: 0,
+    };
+  };
+
+  const handleRecentTap = (url: string) => {
+    'background only';
+    if (openRecentUrl === url) {
+      setOpenRecentUrl(null);
+      return;
+    }
+    if (openRecentUrl !== null) {
+      setOpenRecentUrl(null);
+    }
+    openSchemaWithUrl(url);
+  };
+
+  const getRecentOffset = (url: string) => {
+    if (activeSwipeUrl === url) {
+      return activeSwipeOffset;
+    }
+    return openRecentUrl === url ? -RECENT_DELETE_ACTION_WIDTH : 0;
   };
 
   const openSchemaHandler = () => {
@@ -124,6 +275,9 @@ export default function HomePage(props: HomePageProps) {
   const handleInput = (event: InputEvent) => {
     'background only';
     const currentValue = event.detail.value;
+    if (inputError) {
+      setInputError('');
+    }
     setInputValue(currentValue);
   };
 
@@ -131,6 +285,7 @@ export default function HomePage(props: HomePageProps) {
     'background only';
     const clipboardText = getExplorerModule()?.readClipboardText?.();
     if (clipboardText && clipboardText.trim().length > 0) {
+      setInputError('');
       setInputValue(clipboardText.trim());
     }
   };
@@ -207,6 +362,11 @@ export default function HomePage(props: HomePageProps) {
           text-color={getTextColor()}
           placeholder-color={getPlaceholderColor()}
         />
+        {inputError ? (
+          <text className={withTheme('input-error')}>{inputError}</text>
+        ) : (
+          <></>
+        )}
         <view
           className={withTheme('connect-button')}
           bindtap={openSchemaHandler}
@@ -229,17 +389,46 @@ export default function HomePage(props: HomePageProps) {
             <text className={withTheme('sub-title')}>Recent</text>
           </view>
           {recentSchemas.map((url) => {
+            const displayText = getRecentDisplayText(url);
             return (
-              <view
-                key={url}
-                className="recent-item"
-                bindtap={() => openSchemaWithUrl(url)}
-                accessibility-element={true}
-                accessibility-label={`Open Recent URL ${url}`}
-                accessibility-traits="button"
-              >
-                <text className={withTheme('recent-url')}>{url}</text>
-                <image src={getIcon('Forward')} className="forward-icon" />
+              <view key={url} className="recent-item-shell">
+                <view
+                  className={withTheme('recent-delete-action')}
+                  bindtap={() => removeRecentSchema(url)}
+                  accessibility-element={true}
+                  accessibility-label={`Remove Recent URL ${url}`}
+                  accessibility-traits="button"
+                >
+                  <text className={withTheme('recent-delete-action-text')}>Delete</text>
+                </view>
+                <view
+                  className={withTheme('recent-item')}
+                  bindtap={() => handleRecentTap(url)}
+                  bindtouchstart={(event) => handleRecentTouchStart(url, event)}
+                  bindtouchmove={(event) => handleRecentTouchMove(url, event)}
+                  bindtouchend={() => finalizeRecentSwipe(url)}
+                  bindtouchcancel={() => finalizeRecentSwipe(url)}
+                  style={{ transform: `translateX(${getRecentOffset(url)}px)` }}
+                  accessibility-element={true}
+                  accessibility-label={`Open Recent URL ${url}`}
+                  accessibility-traits="button"
+                >
+                  <view className="recent-copy">
+                    <text className={withTheme('recent-title')}>
+                      {displayText.primaryText}
+                    </text>
+                    {displayText.secondaryText ? (
+                      <text className={withTheme('recent-subtitle')}>
+                        {displayText.secondaryText}
+                      </text>
+                    ) : (
+                      <></>
+                    )}
+                  </view>
+                  <view className={withTheme('recent-forward-chip')}>
+                    <image src={getIcon('Forward')} className="forward-icon" />
+                  </view>
+                </view>
               </view>
             );
           })}
