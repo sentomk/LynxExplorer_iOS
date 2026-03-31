@@ -1,0 +1,12 @@
+.DS_Store
+.bundle/
+.ruby-lsp/
+
+app/Pods/
+app/LynxExplorer.xcworkspace/
+app/Podfile.lock
+
+homepage/node_modules/
+homepage/dist/
+
+*.xcresult

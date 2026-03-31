@@ -1,0 +1,76 @@
+source 'https://cdn.cocoapods.org/'
+project './LynxExplorer.xcodeproj'
+
+platform :ios, '10.0'
+
+lynx_root = ENV['LYNX_ROOT'] || File.expand_path('../lynx', __dir__)
+
+unless File.exist?(File.join(lynx_root, 'tools/ios_tools/generate_podspec_scripts_by_gn.py'))
+  abort <<~MSG
+    Missing Lynx source tree.
+
+    Clone lynx into ../lynx, or set LYNX_ROOT to a local lynx checkout.
+    Expected path: #{lynx_root}
+  MSG
+end
+
+install!'cocoapods',:deterministic_uuids=>false,
+                    :lock_pod_sources=>false,
+                    :generate_multiple_pod_projects => true,
+                    :incremental_installation=>true,
+                    :warn_for_multiple_pod_sources => false
+
+post_install do |installer|
+  installer.pod_target_subprojects.flat_map { |p| p.targets }.each do |t|
+    t.build_configurations.each do |c|
+      c.build_settings['CODE_SIGNING_ALLOWED'] = "NO"
+    end
+  end
+end
+
+target 'LynxExplorer' do
+  use_frameworks! :linkage => :static
+  pod 'Lynx', :path => lynx_root, :subspecs => [
+   'Framework',
+  ],:testspecs => [ 'UnitTests' ]
+
+  pod 'LynxBase', :path => lynx_root, :subspecs => [
+   'Framework',
+  ]
+
+  pod 'LynxDevtool', :path => lynx_root, :subspecs => [
+   'Framework',
+   'LynxRecorder',
+  ],:testspecs => [ 'UnitTests' ]
+
+  pod 'BaseDevtool', :path => lynx_root
+
+  pod 'LynxService', :path => lynx_root, :subspecs => [
+    'Image',
+    'Log',
+    'Devtool',
+    'Http',
+  ]
+  pod 'LynxServiceAPI', :path => lynx_root, :subspecs => [
+    'Core'
+  ]
+
+  pod 'XElement', :path => lynx_root, :subspecs => [
+    'Behavior',
+  ]
+
+  pod 'PrimJS', :subspecs => ['quickjs', 'napi']
+
+  pod 'SDWebImage','5.15.5'
+  pod 'SDWebImageWebPCoder', '0.11.0'
+
+  pod 'DebugRouter', '5.0.15'
+  pod 'DebugRouter/MessageTransceiverEnable', '5.0.15'
+  pod 'MJRefresh', '3.6.1'
+end
+
+target 'LynxExplorerTests' do
+  inherit! :complete
+  pod 'OCMock', :git => 'https://github.com/erikdoe/ocmock.git', :tag => 'v3.9.1'
+  pod 'XcodeCoverage', :git => 'https://github.com/jonreid/XcodeCoverage.git', :tag => 'v1.4.0'
+end
