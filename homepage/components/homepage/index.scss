@@ -61,7 +61,7 @@
 
 .input-box__light {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   margin: 0% 5% 2% 5%;
   border-width: 0px 0px 1px;
   border-color: #0000001a;
@@ -72,13 +72,18 @@
 
 .input-box__dark {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   margin: 0% 5% 2% 5%;
   border-width: 0px 0px 1px;
   border-color: #ffffff1a;
   height: 20%;
   width: 90%;
   color: var(--text-dark);
+}
+
+.input-control {
+  flex: 1;
+  align-self: stretch;
 }
 
 .input-error__light {
@@ -160,6 +165,38 @@
   color: var(--text-dark);
 }
 
+.inline-clear__light {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12px;
+  padding: 0 4px;
+  height: 100%;
+}
+
+.inline-clear__dark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: 12px;
+  padding: 0 4px;
+  height: 100%;
+}
+
+.inline-clear-text__light {
+  line-height: 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.inline-clear-text__dark {
+  line-height: 18px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #9ca3af;
+}
+
 .recent-card__light {
   @include box;
   flex-direction: column;
@@ -177,8 +214,46 @@
 .recent-header {
   display: flex;
   align-items: center;
-  height: 36px;
+  height: 42px;
   margin: 0 5%;
+}
+
+.recent-clear__light {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  min-width: 72px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: transparent;
+}
+
+.recent-clear__dark {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: auto;
+  min-width: 72px;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: 10px;
+  background: transparent;
+}
+
+.recent-clear-text__light {
+  line-height: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #d05b39;
+}
+
+.recent-clear-text__dark {
+  line-height: 18px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #ffb9a3;
 }
 
 .recent-item-shell {

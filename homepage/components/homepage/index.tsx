@@ -177,6 +177,15 @@ export default function HomePage(props: HomePageProps) {
     openSchema(normalizedUrl);
   };
 
+  const clearInput = () => {
+    'background only';
+    if (!inputValue) {
+      return;
+    }
+    setInputError('');
+    setInputValue('');
+  };
+
   const removeRecentSchema = (url: string) => {
     'background only';
     if (openRecentUrl === url) {
@@ -187,6 +196,24 @@ export default function HomePage(props: HomePageProps) {
       writeRecentSchemas(next);
       return next;
     });
+  };
+
+  const clearRecentSchemas = () => {
+    'background only';
+    if (recentSchemas.length === 0) {
+      return;
+    }
+    setOpenRecentUrl(null);
+    setActiveSwipeUrl(null);
+    setActiveSwipeOffset(0);
+    recentSwipeRef.current = {
+      url: null,
+      startX: 0,
+      initialOffset: 0,
+      currentOffset: 0,
+    };
+    writeRecentSchemas([]);
+    setRecentSchemas([]);
   };
 
   const handleRecentTouchStart = (url: string, event: { detail: { x: number } }) => {
@@ -354,14 +381,29 @@ export default function HomePage(props: HomePageProps) {
             <text className={withTheme('secondary-button-text')}>Paste</text>
           </view>
         </view>
-        <explorer-input
-          className={withTheme('input-box')}
-          value={inputValue}
-          bindinput={handleInput}
-          placeholder="Enter Bundle URL"
-          text-color={getTextColor()}
-          placeholder-color={getPlaceholderColor()}
-        />
+        <view className={withTheme('input-box')}>
+          <explorer-input
+            className="input-control"
+            value={inputValue}
+            bindinput={handleInput}
+            placeholder="Enter Bundle URL"
+            text-color={getTextColor()}
+            placeholder-color={getPlaceholderColor()}
+          />
+          {inputValue ? (
+            <view
+              className={withTheme('inline-clear')}
+              bindtap={clearInput}
+              accessibility-element={true}
+              accessibility-label="Clear Bundle URL"
+              accessibility-traits="button"
+            >
+              <text className={withTheme('inline-clear-text')}>Clear</text>
+            </view>
+          ) : (
+            <></>
+          )}
+        </view>
         {inputError ? (
           <text className={withTheme('input-error')}>{inputError}</text>
         ) : (
@@ -387,6 +429,15 @@ export default function HomePage(props: HomePageProps) {
         <view className={withTheme('recent-card')}>
           <view className="recent-header">
             <text className={withTheme('sub-title')}>Recent</text>
+            <view
+              className={withTheme('recent-clear')}
+              bindtap={clearRecentSchemas}
+              accessibility-element={true}
+              accessibility-label="Clear Recent URLs"
+              accessibility-traits="button"
+            >
+              <text className={withTheme('recent-clear-text')}>Clear all</text>
+            </view>
           </view>
           {recentSchemas.map((url) => {
             const displayText = getRecentDisplayText(url);
