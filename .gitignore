@@ -5,6 +5,8 @@
 app/Pods/
 app/LynxExplorer.xcworkspace/
 app/Podfile.lock
+app/LynxExplorer.xcodeproj/project.xcworkspace/xcuserdata/
+*.xcuserstate
 
 homepage/node_modules/
 homepage/dist/
