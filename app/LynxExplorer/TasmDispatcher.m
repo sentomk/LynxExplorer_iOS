@@ -73,6 +73,11 @@ static NSUInteger const kMaxRecentSchemasCount = 3;
     }
   }
 
+  if (url.length == 0) {
+    [self showUnsupportedUrlAlert:sourceUrl];
+    return;
+  }
+
   [self generateLatestParams];
 
   BOOL animated = YES;
@@ -96,6 +101,28 @@ static NSUInteger const kMaxRecentSchemasCount = 3;
       shellVC.params = self->_latestParams;
       [vc pushViewController:shellVC animated:animated];
     }
+  });
+}
+
+- (void)showUnsupportedUrlAlert:(NSString *)sourceUrl {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    NSString *message = @"Enter a valid http(s) bundle URL or a file://lynx local bundle URL.";
+    if (sourceUrl.length > 0) {
+      message = [NSString stringWithFormat:@"%@\n\nInput: %@", message, sourceUrl];
+    }
+
+    UIAlertController *alertController =
+        [UIAlertController alertControllerWithTitle:@"Unsupported URL"
+                                            message:message
+                                     preferredStyle:UIAlertControllerStyleAlert];
+    [alertController addAction:[UIAlertAction actionWithTitle:@"OK"
+                                                        style:UIAlertActionStyleDefault
+                                                      handler:nil]];
+
+    UINavigationController *vc =
+        ((AppDelegate *)([UIApplication sharedApplication].delegate)).navigationController;
+    UIViewController *presentingVC = vc.topViewController ?: vc;
+    [presentingVC presentViewController:alertController animated:YES completion:nil];
   });
 }
 
