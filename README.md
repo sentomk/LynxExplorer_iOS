@@ -2,7 +2,7 @@
 
 LynxExplorer_iOS is an iOS-only fork of Lynx Explorer.
 
-This repository is based on the `lynx` source tree at commit `faeec5c7b8e21be2c906d4a9b32d80df596deeb3`.
+This repository is based on the `lynx` source tree at commit [`faeec5c7b8e21be2c906d4a9b32d80df596deeb3`](https://github.com/lynx-family/lynx/commit/faeec5c7b8e21be2c906d4a9b32d80df596deeb3).
 
 ## Scope
 

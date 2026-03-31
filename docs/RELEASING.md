@@ -51,7 +51,7 @@ Short description of the release.
 
 ## Upstream base
 
-- lynx commit: `faeec5c7b8e21be2c906d4a9b32d80df596deeb3`
+- lynx commit: [`faeec5c7b8e21be2c906d4a9b32d80df596deeb3`](https://github.com/lynx-family/lynx/commit/faeec5c7b8e21be2c906d4a9b32d80df596deeb3)
 ```
 
 ## Publishing checklist
