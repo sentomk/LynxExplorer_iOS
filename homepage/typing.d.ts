@@ -9,7 +9,7 @@
  * and prevent being overridden by '@lynx-js/react' type imports.
  */
 
-import type { BaseEvent, StandardProps } from '@lynx-js/types';
+import type { BaseEvent, StandardProps, ScrollEvent as LynxScrollEvent } from '@lynx-js/types';
 
 declare global {
   declare module '*.png?inline';
@@ -84,3 +84,4 @@ export interface InputProps extends StandardProps {
 
 export type InputEvent = BaseEvent<'input', { value: string }>;
 export type BlurEvent = BaseEvent<'blur', { value: string }>;
+export type ScrollEvent = LynxScrollEvent;

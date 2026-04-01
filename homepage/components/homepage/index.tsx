@@ -12,7 +12,7 @@ import ForwardIcon from '@assets/images/forward.png?inline';
 import ScanIconDark from '@assets/images/scan-dark.png?inline';
 import ScanIcon from '@assets/images/scan.png?inline';
 import ShowcaseIcon from '@assets/images/showcase.png?inline';
-import type { InputEvent } from '../../typing';
+import type { InputEvent, ScrollEvent } from '../../typing';
 import { openSchema, navigateTo, useTheme, useSafeArea } from '@explorer/lib';
 
 interface HomePageProps {
@@ -20,7 +20,12 @@ interface HomePageProps {
 }
 
 const RECENT_SCHEMAS_STORAGE_KEY = 'recentSchemas';
-const MAX_RECENT_SCHEMAS = 3;
+const MAX_RECENT_SCHEMAS = 50;
+const RECENT_VISIBLE_SCHEMAS_HINT = 4.2;
+const RECENT_ITEM_HEIGHT = 58;
+const MIN_RECENT_SCROLLBAR_HEIGHT = 24;
+const RECENT_SCROLLBAR_INSET_TOP = 8;
+const RECENT_SCROLLBAR_INSET_BOTTOM = 12;
 const HTTP_SCHEMA_PATTERN = /^https?:\/\//i;
 const LOCAL_SCHEMA_PATTERN = /^file:\/\/lynx\?local:\/\//i;
 const RECENT_DELETE_ACTION_WIDTH = 88;
@@ -112,6 +117,34 @@ function getRecentDisplayText(url: string) {
   };
 }
 
+function getRecentScrollbarMetrics(
+  itemCount: number,
+  viewportHeight: number,
+  trackHeight: number,
+  scrollTop: number
+) {
+  const contentHeight = itemCount * RECENT_ITEM_HEIGHT;
+  if (itemCount <= 4 || contentHeight <= viewportHeight || trackHeight <= 0) {
+    return {
+      height: 0,
+      top: 0,
+    };
+  }
+
+  const thumbHeight = Math.max(
+    MIN_RECENT_SCROLLBAR_HEIGHT,
+    trackHeight * (viewportHeight / contentHeight)
+  );
+  const maxThumbTravel = trackHeight - thumbHeight;
+  const maxScrollTop = Math.max(1, contentHeight - viewportHeight);
+  const thumbTop = maxThumbTravel * (scrollTop / maxScrollTop);
+
+  return {
+    height: thumbHeight,
+    top: thumbTop,
+  };
+}
+
 export default function HomePage(props: HomePageProps) {
   const { resolved, withTheme } = useTheme();
   const safeArea = useSafeArea();
@@ -120,6 +153,7 @@ export default function HomePage(props: HomePageProps) {
   const [recentSchemas, setRecentSchemas] = useState<string[]>(
     () => readRecentSchemas()
   );
+  const [recentScrollTop, setRecentScrollTop] = useState(0);
   const [openRecentUrl, setOpenRecentUrl] = useState<string | null>(null);
   const [activeSwipeUrl, setActiveSwipeUrl] = useState<string | null>(null);
   const [activeSwipeOffset, setActiveSwipeOffset] = useState(0);
@@ -153,6 +187,10 @@ export default function HomePage(props: HomePageProps) {
       setOpenRecentUrl(null);
     }
   }, [openRecentUrl, recentSchemas]);
+
+  useEffect(() => {
+    setRecentScrollTop(0);
+  }, [recentSchemas]);
 
   const icons = {
     Scan: { dark: ScanIconDark, light: ScanIcon },
@@ -305,6 +343,11 @@ export default function HomePage(props: HomePageProps) {
     openSchemaWithUrl(inputValue);
   };
 
+  const handleRecentScroll = (event: ScrollEvent) => {
+    'background only';
+    setRecentScrollTop(event.detail.scrollTop || 0);
+  };
+
   const openShowcasePage = () => {
     'background only';
     navigateTo('showcase/menu/main.lynx.bundle', {
@@ -343,6 +386,21 @@ export default function HomePage(props: HomePageProps) {
   }
 
   const navigatorHeight = 48 + safeArea.bottom;
+  const recentListHeight =
+    recentSchemas.length > 4
+      ? RECENT_VISIBLE_SCHEMAS_HINT * RECENT_ITEM_HEIGHT
+      : recentSchemas.length * RECENT_ITEM_HEIGHT;
+  const recentScrollbarTrackHeight = Math.max(
+    0,
+    recentListHeight - RECENT_SCROLLBAR_INSET_TOP - RECENT_SCROLLBAR_INSET_BOTTOM
+  );
+  const recentScrollbarMetrics = getRecentScrollbarMetrics(
+    recentSchemas.length,
+    recentListHeight,
+    recentScrollbarTrackHeight,
+    recentScrollTop
+  );
+  const shouldShowRecentScrollbar = recentScrollbarMetrics.height > 0;
 
   return (
     <view
@@ -455,50 +513,81 @@ export default function HomePage(props: HomePageProps) {
               <text className={withTheme('recent-clear-text')}>Clear all</text>
             </view>
           </view>
-          {recentSchemas.map((url) => {
-            const displayText = getRecentDisplayText(url);
-            return (
-              <view key={url} className="recent-item-shell">
-                <view
-                  className={withTheme('recent-delete-action')}
-                  bindtap={() => removeRecentSchema(url)}
-                  accessibility-element={true}
-                  accessibility-label={`Remove Recent URL ${url}`}
-                  accessibility-traits="button"
-                >
-                  <text className={withTheme('recent-delete-action-text')}>Delete</text>
-                </view>
-                <view
-                  className={withTheme('recent-item')}
-                  bindtap={() => handleRecentTap(url)}
-                  bindtouchstart={(event) => handleRecentTouchStart(url, event)}
-                  bindtouchmove={(event) => handleRecentTouchMove(url, event)}
-                  bindtouchend={() => finalizeRecentSwipe(url)}
-                  bindtouchcancel={() => finalizeRecentSwipe(url)}
-                  style={{ transform: `translateX(${getRecentOffset(url)}px)` }}
-                  accessibility-element={true}
-                  accessibility-label={`Open Recent URL ${url}`}
-                  accessibility-traits="button"
-                >
-                  <view className="recent-copy">
-                    <text className={withTheme('recent-title')}>
-                      {displayText.primaryText}
-                    </text>
-                    {displayText.secondaryText ? (
-                      <text className={withTheme('recent-subtitle')}>
-                        {displayText.secondaryText}
-                      </text>
-                    ) : (
-                      <></>
-                    )}
+          <view
+            className="recent-list-shell"
+            style={{ height: `${recentListHeight}px` }}
+          >
+            <scroll-view
+              scroll-y
+              className="recent-list"
+              bindscroll={handleRecentScroll}
+              style={{
+                height: `${recentListHeight}px`,
+              }}
+            >
+              {recentSchemas.map((url) => {
+                const displayText = getRecentDisplayText(url);
+                return (
+                  <view key={url} className="recent-item-shell">
+                    <view
+                      className={withTheme('recent-delete-action')}
+                      bindtap={() => removeRecentSchema(url)}
+                      accessibility-element={true}
+                      accessibility-label={`Remove Recent URL ${url}`}
+                      accessibility-traits="button"
+                    >
+                      <text className={withTheme('recent-delete-action-text')}>Delete</text>
+                    </view>
+                    <view
+                      className={withTheme('recent-item')}
+                      bindtap={() => handleRecentTap(url)}
+                      bindtouchstart={(event) => handleRecentTouchStart(url, event)}
+                      bindtouchmove={(event) => handleRecentTouchMove(url, event)}
+                      bindtouchend={() => finalizeRecentSwipe(url)}
+                      bindtouchcancel={() => finalizeRecentSwipe(url)}
+                      style={{ transform: `translateX(${getRecentOffset(url)}px)` }}
+                      accessibility-element={true}
+                      accessibility-label={`Open Recent URL ${url}`}
+                      accessibility-traits="button"
+                    >
+                      <view className="recent-copy">
+                        <text className={withTheme('recent-title')}>
+                          {displayText.primaryText}
+                        </text>
+                        {displayText.secondaryText ? (
+                          <text className={withTheme('recent-subtitle')}>
+                            {displayText.secondaryText}
+                          </text>
+                        ) : (
+                          <></>
+                        )}
+                      </view>
+                      <view className={withTheme('recent-forward-chip')}>
+                        <image src={getIcon('Forward')} className="forward-icon" />
+                      </view>
+                    </view>
                   </view>
-                  <view className={withTheme('recent-forward-chip')}>
-                    <image src={getIcon('Forward')} className="forward-icon" />
-                  </view>
-                </view>
+                );
+              })}
+            </scroll-view>
+            {shouldShowRecentScrollbar ? (
+              <view
+                className={withTheme('recent-scrollbar-track')}
+                style={{ height: `${recentScrollbarTrackHeight}px` }}
+                accessibility-element={false}
+              >
+                <view
+                  className={withTheme('recent-scrollbar-thumb')}
+                  style={{
+                    height: `${recentScrollbarMetrics.height}px`,
+                    transform: `translateY(${recentScrollbarMetrics.top}px)`,
+                  }}
+                />
               </view>
-            );
-          })}
+            ) : (
+              <></>
+            )}
+          </view>
         </view>
       ) : (
         <></>

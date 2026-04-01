@@ -17,7 +17,7 @@
 static TasmDispatcher *_instance = nil;
 static NSMapTable<NSString *, __kindof UIViewController *> *_dispatchedViewControllers = nil;
 static NSString *const kRecentSchemasStorageKey = @"recentSchemas";
-static NSUInteger const kMaxRecentSchemasCount = 3;
+static NSUInteger const kMaxRecentSchemasCount = 50;
 
 + (instancetype)sharedInstance {
   static dispatch_once_t onceToken;

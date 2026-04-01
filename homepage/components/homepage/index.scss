@@ -199,6 +199,7 @@
 
 .recent-card__light {
   @include box;
+  position: relative;
   flex-direction: column;
   margin-bottom: 3%;
   background: var(--box-light);
@@ -206,6 +207,7 @@
 
 .recent-card__dark {
   @include box;
+  position: relative;
   flex-direction: column;
   margin-bottom: 3%;
   background: var(--box-dark);
@@ -216,6 +218,49 @@
   align-items: center;
   height: 42px;
   margin: 0 5%;
+}
+
+.recent-list {
+  width: 100%;
+  height: 100%;
+  padding-bottom: 12px;
+}
+
+.recent-list-shell {
+  position: relative;
+  margin-bottom: 8px;
+}
+
+.recent-scrollbar-track__light {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #00000008;
+}
+
+.recent-scrollbar-track__dark {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 4px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: #ffffff12;
+}
+
+.recent-scrollbar-thumb__light {
+  width: 100%;
+  border-radius: 999px;
+  background: #0000002e;
+}
+
+.recent-scrollbar-thumb__dark {
+  width: 100%;
+  border-radius: 999px;
+  background: #ffffff52;
 }
 
 .recent-clear__light {
