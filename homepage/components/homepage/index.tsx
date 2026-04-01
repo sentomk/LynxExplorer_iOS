@@ -25,6 +25,7 @@ const HTTP_SCHEMA_PATTERN = /^https?:\/\//i;
 const LOCAL_SCHEMA_PATTERN = /^file:\/\/lynx\?local:\/\//i;
 const RECENT_DELETE_ACTION_WIDTH = 88;
 const RECENT_SWIPE_OPEN_THRESHOLD = 44;
+const GENERIC_PATH_SEGMENTS = new Set(['dist', 'build', 'bundle', 'bundles', 'out']);
 
 function getExplorerModule() {
   if (typeof NativeModules !== 'undefined') {
@@ -80,20 +81,35 @@ function isSupportedBundleUrl(url: string) {
 }
 
 function getRecentDisplayText(url: string) {
-  try {
-    const parsedUrl = new URL(url);
-    const primaryText = parsedUrl.host || parsedUrl.hostname || url;
-    const pathText = `${parsedUrl.pathname || '/'}${parsedUrl.search || ''}`;
+  const normalizedUrl = url.trim();
+  const schemaMatch = normalizedUrl.match(/^[a-z]+:\/\/([^/?#]+)([^?#]*)(?:\?([^#]*))?/i);
+  if (!schemaMatch) {
     return {
-      primaryText,
-      secondaryText: pathText === '' ? url : pathText,
-    };
-  } catch {
-    return {
-      primaryText: url,
+      primaryText: normalizedUrl,
       secondaryText: '',
     };
   }
+
+  const host = schemaMatch[1] || '';
+  const pathname = schemaMatch[2] || '';
+  const query = schemaMatch[3] || '';
+  const pathSegments = pathname.split('/').filter((segment) => segment.length > 0);
+  const fileName = pathSegments[pathSegments.length - 1] || '';
+  const entryMatch = fileName.match(/^(.*)\.lynx\.bundle$/i);
+  const entryName = entryMatch?.[1] || '';
+  const reversedParents = pathSegments.slice(0, -1).reverse();
+  const meaningfulParent = reversedParents.find(
+    (segment) => !GENERIC_PATH_SEGMENTS.has(segment.toLowerCase())
+  );
+  const primaryText = entryName || fileName || meaningfulParent || host || normalizedUrl;
+  const secondaryParts = [meaningfulParent, host, query].filter(
+    (part): part is string => typeof part === 'string' && part.length > 0 && part !== primaryText
+  );
+
+  return {
+    primaryText,
+    secondaryText: secondaryParts.join(' · '),
+  };
 }
 
 export default function HomePage(props: HomePageProps) {
