@@ -4,8 +4,10 @@
 
 #import "LynxViewShellViewController.h"
 #import <Lynx/LynxEnv.h>
+#import <Lynx/LynxError.h>
 #import <Lynx/LynxProviderRegistry.h>
 #import <Lynx/LynxView.h>
+#import <Lynx/LynxViewClient.h>
 #import "DemoGenericResourceFetcher.h"
 #import "DemoMediaResourceFetcher.h"
 #import "DemoTemplateResourceFetcher.h"
@@ -24,7 +26,7 @@ NSString *const kBackButtonStyleDark = @"dark";
 NSString *const kBackButtonImageLight = @"back_light";
 NSString *const kBackButtonImageDark = @"back_dark";
 
-@interface LynxViewShellViewController () {
+@interface LynxViewShellViewController () <LynxViewLifecycle> {
   LynxExtraTiming *extraTiming;
 }
 
@@ -36,6 +38,11 @@ NSString *const kBackButtonImageDark = @"back_dark";
 @property(nonatomic, strong) UIView *previousViewControllerView;
 @property(nonatomic, copy) NSString *frontendTheme;
 @property(nonatomic, strong) LynxView *lynxView;
+@property(nonatomic, assign) BOOL hasCompletedInitialLoad;
+@property(nonatomic, strong) UIView *loadFailureView;
+@property(nonatomic, strong) UILabel *loadFailureTitleLabel;
+@property(nonatomic, strong) UILabel *loadFailureMessageLabel;
+@property(nonatomic, strong) UILabel *loadFailureURLLabel;
 
 @end
 
@@ -50,9 +57,16 @@ NSString *const kBackButtonImageDark = @"back_dark";
     self.titleColor = [UIColor blackColor];
     self.barColor = [UIColor whiteColor];
     self.frontendTheme = kBackButtonStyleLight;
+    self.hasCompletedInitialLoad = NO;
   }
 
   return self;
+}
+
+- (void)dealloc {
+  if (self.lynxView != nil) {
+    [self.lynxView removeLifecycleClient:self];
+  }
 }
 
 - (void)viewDidLoad {
@@ -66,6 +80,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
   extraTiming.containerInitEnd = [[NSDate date] timeIntervalSince1970] * 1000;
   extraTiming.prepareTemplateStart = [[NSDate date] timeIntervalSince1970] * 1000;
   extraTiming.prepareTemplateEnd = [[NSDate date] timeIntervalSince1970] * 1000;
+  [self setupLoadFailureView];
   [self loadLynxViewWithUrl:self.url templateData:self.data];
 }
 
@@ -112,6 +127,8 @@ NSString *const kBackButtonImageDark = @"back_dark";
 }
 
 - (void)loadLynxViewWithUrl:(NSString *)url templateData:(NSData *)data {
+  self.hasCompletedInitialLoad = NO;
+  [self hideLoadFailureView];
   CGRect screenFrame = self.view.frame;
   CGRect statusRect = [[UIApplication sharedApplication] statusBarFrame];
   CGRect navRect = self.navigationController.navigationBar.frame;
@@ -145,6 +162,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
     [builder setThreadStrategyForRender:threadStrategy];
   }];
   self.lynxView = lynxView;
+  [lynxView addLifecycleClient:self];
   lynxView.preferredLayoutWidth = screenSize.width;
   [lynxView setExtraTiming:extraTiming];
 
@@ -207,6 +225,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
                    lynxView.intrinsicContentSize.width, lynxView.intrinsicContentSize.height);
   }
   lynxView.frame = lynxViewFrame;
+  self.loadFailureView.frame = [self contentFrameForCurrentPage];
 }
 
 - (void)parseParameters {
@@ -326,6 +345,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
 - (void)viewWillLayoutSubviews {
   [super viewWillLayoutSubviews];
   [self setNavigationStatus];
+  self.loadFailureView.frame = [self contentFrameForCurrentPage];
 }
 
 - (void)setNavigationStatus {
@@ -413,6 +433,9 @@ NSString *const kBackButtonImageDark = @"back_dark";
 }
 
 - (void)reloadCurrentPage {
+  if (self.lynxView != nil) {
+    [self.lynxView removeLifecycleClient:self];
+  }
   [self.lynxView removeFromSuperview];
   self.lynxView = nil;
   extraTiming = [[LynxExtraTiming alloc] init];
@@ -422,6 +445,212 @@ NSString *const kBackButtonImageDark = @"back_dark";
   extraTiming.prepareTemplateStart = extraTiming.openTime;
   extraTiming.prepareTemplateEnd = extraTiming.openTime;
   [self loadLynxViewWithUrl:self.url templateData:self.data];
+}
+
+- (CGRect)contentFrameForCurrentPage {
+  CGRect bounds = self.view.bounds;
+  if (self.fullScreen) {
+    return bounds;
+  }
+
+  CGFloat topInset = [UIApplication sharedApplication].statusBarFrame.size.height;
+  if (!self.hiddenNav) {
+    topInset += self.navigationController.navigationBar.frame.size.height;
+  }
+
+  return CGRectMake(0, topInset, CGRectGetWidth(bounds), MAX(CGRectGetHeight(bounds) - topInset, 0));
+}
+
+- (void)setupLoadFailureView {
+  if (self.loadFailureView != nil) {
+    return;
+  }
+
+  UIView *failureView = [[UIView alloc] initWithFrame:CGRectZero];
+  failureView.hidden = YES;
+  failureView.backgroundColor = self.barColor;
+  failureView.userInteractionEnabled = YES;
+
+  UIColor *surfaceColor = [self.titleColor colorWithAlphaComponent:0.045];
+  UIColor *subtleTextColor = [self.titleColor colorWithAlphaComponent:0.64];
+  UIColor *secondaryTextColor = [self.titleColor colorWithAlphaComponent:0.48];
+  UIColor *accentColor = [UIColor colorWithRed:1.0 green:0.392 blue:0.282 alpha:1.0];
+
+  UIView *panelView = [[UIView alloc] initWithFrame:CGRectZero];
+  panelView.translatesAutoresizingMaskIntoConstraints = NO;
+  panelView.backgroundColor = surfaceColor;
+  panelView.layer.cornerRadius = 28;
+
+  UIView *badgeView = [[UIView alloc] initWithFrame:CGRectZero];
+  badgeView.translatesAutoresizingMaskIntoConstraints = NO;
+  badgeView.backgroundColor = [accentColor colorWithAlphaComponent:0.14];
+  badgeView.layer.cornerRadius = 28;
+
+  UILabel *badgeLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+  badgeLabel.translatesAutoresizingMaskIntoConstraints = NO;
+  badgeLabel.text = @"!";
+  badgeLabel.font = [UIFont systemFontOfSize:28 weight:UIFontWeightSemibold];
+  badgeLabel.textAlignment = NSTextAlignmentCenter;
+  badgeLabel.textColor = accentColor;
+
+  UILabel *titleLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+  titleLabel.text = @"Couldn't load bundle";
+  titleLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightSemibold];
+  titleLabel.textAlignment = NSTextAlignmentCenter;
+  titleLabel.textColor = self.titleColor;
+  titleLabel.numberOfLines = 0;
+
+  UILabel *messageLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+  messageLabel.font = [UIFont systemFontOfSize:15 weight:UIFontWeightRegular];
+  messageLabel.textAlignment = NSTextAlignmentCenter;
+  messageLabel.textColor = subtleTextColor;
+  messageLabel.numberOfLines = 0;
+
+  UILabel *urlCaptionLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+  urlCaptionLabel.text = @"URL";
+  urlCaptionLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
+  urlCaptionLabel.textAlignment = NSTextAlignmentLeft;
+  urlCaptionLabel.textColor = secondaryTextColor;
+
+  UILabel *urlLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+  urlLabel.font = [UIFont monospacedSystemFontOfSize:13 weight:UIFontWeightRegular];
+  urlLabel.textAlignment = NSTextAlignmentLeft;
+  urlLabel.textColor = subtleTextColor;
+  urlLabel.numberOfLines = 2;
+  urlLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
+
+  UIView *urlPanelView = [[UIView alloc] initWithFrame:CGRectZero];
+  urlPanelView.translatesAutoresizingMaskIntoConstraints = NO;
+  urlPanelView.backgroundColor = [self.titleColor colorWithAlphaComponent:0.04];
+  urlPanelView.layer.cornerRadius = 16;
+
+  UIButton *retryButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  [retryButton setTitle:@"Retry" forState:UIControlStateNormal];
+  retryButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+  [retryButton setTitleColor:UIColor.whiteColor forState:UIControlStateNormal];
+  retryButton.backgroundColor = accentColor;
+  retryButton.layer.cornerRadius = 14;
+  [retryButton addTarget:self action:@selector(reloadButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+
+  UIButton *backButton = [UIButton buttonWithType:UIButtonTypeSystem];
+  [backButton setTitle:@"Back" forState:UIControlStateNormal];
+  backButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
+  [backButton setTitleColor:self.titleColor forState:UIControlStateNormal];
+  backButton.backgroundColor = [self.titleColor colorWithAlphaComponent:0.08];
+  backButton.layer.cornerRadius = 14;
+  [backButton addTarget:self action:@selector(backButtonTapped) forControlEvents:UIControlEventTouchUpInside];
+
+  UIStackView *buttonStack = [[UIStackView alloc] initWithArrangedSubviews:@[ backButton, retryButton ]];
+  buttonStack.axis = UILayoutConstraintAxisHorizontal;
+  buttonStack.alignment = UIStackViewAlignmentFill;
+  buttonStack.distribution = UIStackViewDistributionFillEqually;
+  buttonStack.spacing = 14;
+
+  UIStackView *urlStack = [[UIStackView alloc] initWithArrangedSubviews:@[ urlCaptionLabel, urlLabel ]];
+  urlStack.axis = UILayoutConstraintAxisVertical;
+  urlStack.alignment = UIStackViewAlignmentFill;
+  urlStack.spacing = 8;
+  urlStack.translatesAutoresizingMaskIntoConstraints = NO;
+
+  [urlPanelView addSubview:urlStack];
+
+  UIStackView *contentStack =
+      [[UIStackView alloc] initWithArrangedSubviews:@[ badgeView, titleLabel, messageLabel, urlPanelView, buttonStack ]];
+  contentStack.axis = UILayoutConstraintAxisVertical;
+  contentStack.alignment = UIStackViewAlignmentFill;
+  contentStack.spacing = 18;
+  contentStack.translatesAutoresizingMaskIntoConstraints = NO;
+
+  [badgeView addSubview:badgeLabel];
+  [panelView addSubview:contentStack];
+  [failureView addSubview:panelView];
+  [self.view addSubview:failureView];
+
+  [NSLayoutConstraint activateConstraints:@[
+    [panelView.centerYAnchor constraintEqualToAnchor:failureView.centerYAnchor],
+    [panelView.leadingAnchor constraintEqualToAnchor:failureView.leadingAnchor constant:20],
+    [panelView.trailingAnchor constraintEqualToAnchor:failureView.trailingAnchor constant:-20],
+    [panelView.topAnchor constraintGreaterThanOrEqualToAnchor:failureView.topAnchor constant:24],
+    [panelView.bottomAnchor constraintLessThanOrEqualToAnchor:failureView.bottomAnchor constant:-24],
+    [contentStack.topAnchor constraintEqualToAnchor:panelView.topAnchor constant:28],
+    [contentStack.leadingAnchor constraintEqualToAnchor:panelView.leadingAnchor constant:22],
+    [contentStack.trailingAnchor constraintEqualToAnchor:panelView.trailingAnchor constant:-22],
+    [contentStack.bottomAnchor constraintEqualToAnchor:panelView.bottomAnchor constant:-22],
+    [badgeView.heightAnchor constraintEqualToConstant:56],
+    [badgeView.widthAnchor constraintEqualToConstant:56],
+    [badgeView.centerXAnchor constraintEqualToAnchor:contentStack.centerXAnchor],
+    [badgeLabel.centerXAnchor constraintEqualToAnchor:badgeView.centerXAnchor],
+    [badgeLabel.centerYAnchor constraintEqualToAnchor:badgeView.centerYAnchor],
+    [urlStack.topAnchor constraintEqualToAnchor:urlPanelView.topAnchor constant:14],
+    [urlStack.leadingAnchor constraintEqualToAnchor:urlPanelView.leadingAnchor constant:14],
+    [urlStack.trailingAnchor constraintEqualToAnchor:urlPanelView.trailingAnchor constant:-14],
+    [urlStack.bottomAnchor constraintEqualToAnchor:urlPanelView.bottomAnchor constant:-14],
+    [retryButton.heightAnchor constraintEqualToConstant:50],
+    [backButton.heightAnchor constraintEqualToConstant:50],
+  ]];
+
+  self.loadFailureView = failureView;
+  self.loadFailureTitleLabel = titleLabel;
+  self.loadFailureMessageLabel = messageLabel;
+  self.loadFailureURLLabel = urlLabel;
+}
+
+- (NSString *)friendlyFailureMessageForError:(NSError *)error {
+  NSString *message = error.localizedDescription ?: @"The page could not be loaded.";
+  NSString *lowercaseMessage = message.lowercaseString;
+  if ([lowercaseMessage containsString:@"timed out"] ||
+      [lowercaseMessage containsString:@"offline"] ||
+      [lowercaseMessage containsString:@"could not connect"] ||
+      [lowercaseMessage containsString:@"network"]) {
+    return @"The bundle server is unavailable. Check that the URL is reachable from this device and try again.";
+  }
+  if ([lowercaseMessage containsString:@"decode"] || [lowercaseMessage containsString:@"template"] ||
+      [lowercaseMessage containsString:@"bundle"]) {
+    return @"The URL responded, but the content could not be loaded as a Lynx bundle.";
+  }
+  return message;
+}
+
+- (void)showLoadFailureViewWithError:(NSError *)error {
+  self.loadFailureTitleLabel.text = @"Couldn't load bundle";
+  self.loadFailureMessageLabel.text = [self friendlyFailureMessageForError:error];
+  self.loadFailureURLLabel.text = self.url ?: @"";
+  self.loadFailureView.hidden = NO;
+  self.loadFailureView.frame = [self contentFrameForCurrentPage];
+  [self.view bringSubviewToFront:self.loadFailureView];
+  self.lynxView.hidden = YES;
+}
+
+- (void)hideLoadFailureView {
+  self.loadFailureView.hidden = YES;
+  self.loadFailureMessageLabel.text = @"";
+  self.loadFailureURLLabel.text = @"";
+  self.lynxView.hidden = NO;
+}
+
+#pragma mark - LynxViewLifecycle
+
+- (void)lynxViewDidStartLoading:(LynxView *)view {
+  if (view != self.lynxView) {
+    return;
+  }
+  self.hasCompletedInitialLoad = NO;
+  [self hideLoadFailureView];
+}
+
+- (void)lynxView:(LynxView *)view didLoadFinishedWithUrl:(NSString *)url {
+  if (view != self.lynxView) {
+    return;
+  }
+  self.hasCompletedInitialLoad = YES;
+  [self hideLoadFailureView];
+}
+
+- (void)lynxView:(LynxView *)view didRecieveError:(NSError *)error {
+  if (view != self.lynxView || self.hasCompletedInitialLoad) {
+    return;
+  }
+  [self showLoadFailureViewWithError:error];
 }
 
 - (UIImage *)scaleImage:(UIImage *)image size:(CGSize)size {
