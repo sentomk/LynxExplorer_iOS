@@ -42,7 +42,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
 @property(nonatomic, strong) UIView *loadFailureView;
 @property(nonatomic, strong) UILabel *loadFailureTitleLabel;
 @property(nonatomic, strong) UILabel *loadFailureMessageLabel;
-@property(nonatomic, strong) UILabel *loadFailureURLLabel;
+@property(nonatomic, strong) UILabel *loadFailureMetadataLabel;
 
 @end
 
@@ -447,6 +447,55 @@ NSString *const kBackButtonImageDark = @"back_dark";
   [self loadLynxViewWithUrl:self.url templateData:self.data];
 }
 
+- (UIColor *)failureBackgroundColor {
+  if (@available(iOS 13.0, *)) {
+    return UIColor.systemBackgroundColor;
+  }
+  return UIColor.whiteColor;
+}
+
+- (UIColor *)failurePanelColor {
+  if (@available(iOS 13.0, *)) {
+    return UIColor.secondarySystemBackgroundColor;
+  }
+  return [UIColor colorWithWhite:0.96 alpha:1.0];
+}
+
+- (UIColor *)failureInlinePanelColor {
+  if (@available(iOS 13.0, *)) {
+    return UIColor.tertiarySystemBackgroundColor;
+  }
+  return [UIColor colorWithWhite:0.93 alpha:1.0];
+}
+
+- (UIColor *)failurePrimaryTextColor {
+  if (@available(iOS 13.0, *)) {
+    return UIColor.labelColor;
+  }
+  return UIColor.blackColor;
+}
+
+- (UIColor *)failureSecondaryTextColor {
+  if (@available(iOS 13.0, *)) {
+    return UIColor.secondaryLabelColor;
+  }
+  return [UIColor colorWithWhite:0.25 alpha:1.0];
+}
+
+- (UIColor *)failureTertiaryTextColor {
+  if (@available(iOS 13.0, *)) {
+    return UIColor.tertiaryLabelColor;
+  }
+  return [UIColor colorWithWhite:0.45 alpha:1.0];
+}
+
+- (UIColor *)failureAccentColor {
+  if (@available(iOS 13.0, *)) {
+    return UIColor.systemRedColor;
+  }
+  return [UIColor colorWithRed:1.0 green:0.231 blue:0.188 alpha:1.0];
+}
+
 - (CGRect)contentFrameForCurrentPage {
   CGRect bounds = self.view.bounds;
   if (self.fullScreen) {
@@ -468,13 +517,15 @@ NSString *const kBackButtonImageDark = @"back_dark";
 
   UIView *failureView = [[UIView alloc] initWithFrame:CGRectZero];
   failureView.hidden = YES;
-  failureView.backgroundColor = self.barColor;
+  failureView.backgroundColor = [self failureBackgroundColor];
   failureView.userInteractionEnabled = YES;
 
-  UIColor *surfaceColor = [self.titleColor colorWithAlphaComponent:0.045];
-  UIColor *subtleTextColor = [self.titleColor colorWithAlphaComponent:0.64];
-  UIColor *secondaryTextColor = [self.titleColor colorWithAlphaComponent:0.48];
-  UIColor *accentColor = [UIColor colorWithRed:1.0 green:0.392 blue:0.282 alpha:1.0];
+  UIColor *surfaceColor = [self failurePanelColor];
+  UIColor *inlinePanelColor = [self failureInlinePanelColor];
+  UIColor *primaryTextColor = [self failurePrimaryTextColor];
+  UIColor *subtleTextColor = [self failureSecondaryTextColor];
+  UIColor *secondaryTextColor = [self failureTertiaryTextColor];
+  UIColor *accentColor = [self failureAccentColor];
 
   UIView *panelView = [[UIView alloc] initWithFrame:CGRectZero];
   panelView.translatesAutoresizingMaskIntoConstraints = NO;
@@ -497,7 +548,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
   titleLabel.text = @"Couldn't load bundle";
   titleLabel.font = [UIFont systemFontOfSize:24 weight:UIFontWeightSemibold];
   titleLabel.textAlignment = NSTextAlignmentCenter;
-  titleLabel.textColor = self.titleColor;
+  titleLabel.textColor = primaryTextColor;
   titleLabel.numberOfLines = 0;
 
   UILabel *messageLabel = [[UILabel alloc] initWithFrame:CGRectZero];
@@ -506,23 +557,11 @@ NSString *const kBackButtonImageDark = @"back_dark";
   messageLabel.textColor = subtleTextColor;
   messageLabel.numberOfLines = 0;
 
-  UILabel *urlCaptionLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-  urlCaptionLabel.text = @"URL";
-  urlCaptionLabel.font = [UIFont systemFontOfSize:11 weight:UIFontWeightSemibold];
-  urlCaptionLabel.textAlignment = NSTextAlignmentLeft;
-  urlCaptionLabel.textColor = secondaryTextColor;
-
-  UILabel *urlLabel = [[UILabel alloc] initWithFrame:CGRectZero];
-  urlLabel.font = [UIFont monospacedSystemFontOfSize:13 weight:UIFontWeightRegular];
-  urlLabel.textAlignment = NSTextAlignmentLeft;
-  urlLabel.textColor = subtleTextColor;
-  urlLabel.numberOfLines = 2;
-  urlLabel.lineBreakMode = NSLineBreakByTruncatingMiddle;
-
-  UIView *urlPanelView = [[UIView alloc] initWithFrame:CGRectZero];
-  urlPanelView.translatesAutoresizingMaskIntoConstraints = NO;
-  urlPanelView.backgroundColor = [self.titleColor colorWithAlphaComponent:0.04];
-  urlPanelView.layer.cornerRadius = 16;
+  UILabel *metadataLabel = [[UILabel alloc] initWithFrame:CGRectZero];
+  metadataLabel.font = [UIFont systemFontOfSize:12 weight:UIFontWeightSemibold];
+  metadataLabel.textAlignment = NSTextAlignmentCenter;
+  metadataLabel.textColor = secondaryTextColor;
+  metadataLabel.numberOfLines = 0;
 
   UIButton *retryButton = [UIButton buttonWithType:UIButtonTypeSystem];
   [retryButton setTitle:@"Retry" forState:UIControlStateNormal];
@@ -535,8 +574,8 @@ NSString *const kBackButtonImageDark = @"back_dark";
   UIButton *backButton = [UIButton buttonWithType:UIButtonTypeSystem];
   [backButton setTitle:@"Back" forState:UIControlStateNormal];
   backButton.titleLabel.font = [UIFont systemFontOfSize:16 weight:UIFontWeightSemibold];
-  [backButton setTitleColor:self.titleColor forState:UIControlStateNormal];
-  backButton.backgroundColor = [self.titleColor colorWithAlphaComponent:0.08];
+  [backButton setTitleColor:primaryTextColor forState:UIControlStateNormal];
+  backButton.backgroundColor = inlinePanelColor;
   backButton.layer.cornerRadius = 14;
   [backButton addTarget:self action:@selector(backButtonTapped) forControlEvents:UIControlEventTouchUpInside];
 
@@ -546,16 +585,11 @@ NSString *const kBackButtonImageDark = @"back_dark";
   buttonStack.distribution = UIStackViewDistributionFillEqually;
   buttonStack.spacing = 14;
 
-  UIStackView *urlStack = [[UIStackView alloc] initWithArrangedSubviews:@[ urlCaptionLabel, urlLabel ]];
-  urlStack.axis = UILayoutConstraintAxisVertical;
-  urlStack.alignment = UIStackViewAlignmentFill;
-  urlStack.spacing = 8;
-  urlStack.translatesAutoresizingMaskIntoConstraints = NO;
-
-  [urlPanelView addSubview:urlStack];
-
   UIStackView *contentStack =
-      [[UIStackView alloc] initWithArrangedSubviews:@[ badgeView, titleLabel, messageLabel, urlPanelView, buttonStack ]];
+      [[UIStackView alloc]
+          initWithArrangedSubviews:@[
+            badgeView, titleLabel, messageLabel, metadataLabel, buttonStack
+          ]];
   contentStack.axis = UILayoutConstraintAxisVertical;
   contentStack.alignment = UIStackViewAlignmentFill;
   contentStack.spacing = 18;
@@ -581,10 +615,6 @@ NSString *const kBackButtonImageDark = @"back_dark";
     [badgeView.centerXAnchor constraintEqualToAnchor:contentStack.centerXAnchor],
     [badgeLabel.centerXAnchor constraintEqualToAnchor:badgeView.centerXAnchor],
     [badgeLabel.centerYAnchor constraintEqualToAnchor:badgeView.centerYAnchor],
-    [urlStack.topAnchor constraintEqualToAnchor:urlPanelView.topAnchor constant:14],
-    [urlStack.leadingAnchor constraintEqualToAnchor:urlPanelView.leadingAnchor constant:14],
-    [urlStack.trailingAnchor constraintEqualToAnchor:urlPanelView.trailingAnchor constant:-14],
-    [urlStack.bottomAnchor constraintEqualToAnchor:urlPanelView.bottomAnchor constant:-14],
     [retryButton.heightAnchor constraintEqualToConstant:50],
     [backButton.heightAnchor constraintEqualToConstant:50],
   ]];
@@ -592,10 +622,19 @@ NSString *const kBackButtonImageDark = @"back_dark";
   self.loadFailureView = failureView;
   self.loadFailureTitleLabel = titleLabel;
   self.loadFailureMessageLabel = messageLabel;
-  self.loadFailureURLLabel = urlLabel;
+  self.loadFailureMetadataLabel = metadataLabel;
 }
 
-- (NSString *)friendlyFailureMessageForError:(NSError *)error {
+- (NSString *)primaryFailureMessageForError:(NSError *)error {
+  if ([error isKindOfClass:[LynxError class]]) {
+    LynxError *lynxError = (LynxError *)error;
+    if (lynxError.summaryMessage.length > 0) {
+      return lynxError.summaryMessage;
+    }
+    if (lynxError.rootCause.length > 0) {
+      return lynxError.rootCause;
+    }
+  }
   NSString *message = error.localizedDescription ?: @"The page could not be loaded.";
   NSString *lowercaseMessage = message.lowercaseString;
   if ([lowercaseMessage containsString:@"timed out"] ||
@@ -611,46 +650,101 @@ NSString *const kBackButtonImageDark = @"back_dark";
   return message;
 }
 
+- (NSString *)failureMetadataTextForError:(NSError *)error {
+  if ([error isKindOfClass:[LynxError class]]) {
+    LynxError *lynxError = (LynxError *)error;
+    NSMutableArray<NSString *> *parts = [NSMutableArray array];
+    [parts addObject:[NSString stringWithFormat:@"Lynx Error %ld", (long)lynxError.errorCode]];
+    NSInteger subCode = [lynxError getSubCode];
+    if (subCode > 0) {
+      [parts addObject:[NSString stringWithFormat:@"Subcode %ld", (long)subCode]];
+    }
+    if (lynxError.level.length > 0) {
+      [parts addObject:lynxError.level.uppercaseString];
+    }
+    return [parts componentsJoinedByString:@"  ·  "];
+  }
+
+  return [NSString stringWithFormat:@"%@  ·  %ld", error.domain ?: @"Error", (long)error.code];
+}
+
+- (void)performUIUpdateOnMainThread:(dispatch_block_t)block {
+  if (block == nil) {
+    return;
+  }
+  if ([NSThread isMainThread]) {
+    block();
+  } else {
+    dispatch_async(dispatch_get_main_queue(), block);
+  }
+}
+
 - (void)showLoadFailureViewWithError:(NSError *)error {
-  self.loadFailureTitleLabel.text = @"Couldn't load bundle";
-  self.loadFailureMessageLabel.text = [self friendlyFailureMessageForError:error];
-  self.loadFailureURLLabel.text = self.url ?: @"";
-  self.loadFailureView.hidden = NO;
-  self.loadFailureView.frame = [self contentFrameForCurrentPage];
-  [self.view bringSubviewToFront:self.loadFailureView];
-  self.lynxView.hidden = YES;
+  __weak typeof(self) weakSelf = self;
+  [self performUIUpdateOnMainThread:^{
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    if (!strongSelf) {
+      return;
+    }
+    strongSelf.loadFailureTitleLabel.text = @"Couldn't load bundle";
+    strongSelf.loadFailureMessageLabel.text = [strongSelf primaryFailureMessageForError:error];
+    strongSelf.loadFailureMetadataLabel.text = [strongSelf failureMetadataTextForError:error];
+    strongSelf.loadFailureView.hidden = NO;
+    strongSelf.loadFailureView.frame = [strongSelf contentFrameForCurrentPage];
+    [strongSelf.view bringSubviewToFront:strongSelf.loadFailureView];
+    strongSelf.lynxView.hidden = YES;
+  }];
 }
 
 - (void)hideLoadFailureView {
-  self.loadFailureView.hidden = YES;
-  self.loadFailureMessageLabel.text = @"";
-  self.loadFailureURLLabel.text = @"";
-  self.lynxView.hidden = NO;
+  __weak typeof(self) weakSelf = self;
+  [self performUIUpdateOnMainThread:^{
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    if (!strongSelf) {
+      return;
+    }
+    strongSelf.loadFailureView.hidden = YES;
+    strongSelf.loadFailureMessageLabel.text = @"";
+    strongSelf.loadFailureMetadataLabel.text = @"";
+    strongSelf.lynxView.hidden = NO;
+  }];
 }
 
 #pragma mark - LynxViewLifecycle
 
 - (void)lynxViewDidStartLoading:(LynxView *)view {
-  if (view != self.lynxView) {
-    return;
-  }
-  self.hasCompletedInitialLoad = NO;
-  [self hideLoadFailureView];
+  __weak typeof(self) weakSelf = self;
+  [self performUIUpdateOnMainThread:^{
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    if (!strongSelf || view != strongSelf.lynxView) {
+      return;
+    }
+    strongSelf.hasCompletedInitialLoad = NO;
+    [strongSelf hideLoadFailureView];
+  }];
 }
 
 - (void)lynxView:(LynxView *)view didLoadFinishedWithUrl:(NSString *)url {
-  if (view != self.lynxView) {
-    return;
-  }
-  self.hasCompletedInitialLoad = YES;
-  [self hideLoadFailureView];
+  __weak typeof(self) weakSelf = self;
+  [self performUIUpdateOnMainThread:^{
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    if (!strongSelf || view != strongSelf.lynxView) {
+      return;
+    }
+    strongSelf.hasCompletedInitialLoad = YES;
+    [strongSelf hideLoadFailureView];
+  }];
 }
 
 - (void)lynxView:(LynxView *)view didRecieveError:(NSError *)error {
-  if (view != self.lynxView || self.hasCompletedInitialLoad) {
-    return;
-  }
-  [self showLoadFailureViewWithError:error];
+  __weak typeof(self) weakSelf = self;
+  [self performUIUpdateOnMainThread:^{
+    __strong typeof(weakSelf) strongSelf = weakSelf;
+    if (!strongSelf || view != strongSelf.lynxView || strongSelf.hasCompletedInitialLoad) {
+      return;
+    }
+    [strongSelf showLoadFailureViewWithError:error];
+  }];
 }
 
 - (UIImage *)scaleImage:(UIImage *)image size:(CGSize)size {
