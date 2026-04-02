@@ -92,6 +92,7 @@ popd
 
 # prepare source cache
 export COCOAPODS_CONVERT_GIT_TO_HTTP=false
+export LYNX_ENABLE_RECORDER=1
 export LANG=en_US.UTF-8
 export BUNDLE_GEMFILE="$gemfile_path"
 pushd "$script_dir"

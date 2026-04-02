@@ -4,6 +4,7 @@ project './LynxExplorer.xcodeproj'
 platform :ios, '10.0'
 
 lynx_root = ENV['LYNX_ROOT'] || File.expand_path('../lynx', __dir__)
+ENV['LYNX_ENABLE_RECORDER'] = '1'
 
 unless File.exist?(File.join(lynx_root, 'tools/ios_tools/generate_podspec_scripts_by_gn.py'))
   abort <<~MSG
@@ -32,6 +33,7 @@ target 'LynxExplorer' do
   use_frameworks! :linkage => :static
   pod 'Lynx', :path => lynx_root, :subspecs => [
    'Framework',
+   'Framework/Recorder',
   ],:testspecs => [ 'UnitTests' ]
 
   pod 'LynxBase', :path => lynx_root, :subspecs => [

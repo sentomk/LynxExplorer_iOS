@@ -91,6 +91,12 @@ static NSUInteger const kMaxRecentSchemasCount = 50;
     if (localRes.isLynxRecorderSchema) {
       LynxRecorderViewController *tbVC = [[LynxRecorderViewController alloc] init];
       tbVC.url = url;
+      tbVC.sourceUrl = sourceUrl;
+      __weak typeof(self) weakSelf = self;
+      NSString *recentSourceUrl = [sourceUrl copy];
+      tbVC.onReplayReady = ^{
+        [weakSelf saveRecentUrl:recentSourceUrl];
+      };
       [tbVC registerLynxRecorderActionCallback:[[LynxRecorderDefaultActionCallback alloc] init]];
       [vc pushViewController:tbVC animated:animated];
     } else {
@@ -106,7 +112,8 @@ static NSUInteger const kMaxRecentSchemasCount = 50;
 
 - (void)showUnsupportedUrlAlert:(NSString *)sourceUrl {
   dispatch_async(dispatch_get_main_queue(), ^{
-    NSString *message = @"Enter a valid http(s) bundle URL or a file://lynx local bundle URL.";
+    NSString *message =
+        @"Enter a valid http(s) bundle URL, a file://lynx local bundle URL, or a file://lynxrecorder URL.";
     if (sourceUrl.length > 0) {
       message = [NSString stringWithFormat:@"%@\n\nInput: %@", message, sourceUrl];
     }

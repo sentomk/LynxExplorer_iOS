@@ -28,6 +28,7 @@ const RECENT_SCROLLBAR_INSET_TOP = 8;
 const RECENT_SCROLLBAR_INSET_BOTTOM = 12;
 const HTTP_SCHEMA_PATTERN = /^https?:\/\//i;
 const LOCAL_SCHEMA_PATTERN = /^file:\/\/lynx\?local:\/\//i;
+const LYNX_RECORDER_SCHEMA_PATTERN = /^file:\/\/lynxrecorder(?:\?|$)/i;
 const RECENT_DELETE_ACTION_WIDTH = 88;
 const RECENT_SWIPE_OPEN_THRESHOLD = 44;
 const GENERIC_PATH_SEGMENTS = new Set(['dist', 'build', 'bundle', 'bundles', 'out']);
@@ -82,7 +83,11 @@ function isSupportedBundleUrl(url: string) {
   if (!normalizedUrl) {
     return false;
   }
-  return HTTP_SCHEMA_PATTERN.test(normalizedUrl) || LOCAL_SCHEMA_PATTERN.test(normalizedUrl);
+  return (
+    HTTP_SCHEMA_PATTERN.test(normalizedUrl) ||
+    LOCAL_SCHEMA_PATTERN.test(normalizedUrl) ||
+    LYNX_RECORDER_SCHEMA_PATTERN.test(normalizedUrl)
+  );
 }
 
 function getRecentDisplayText(url: string) {
@@ -212,7 +217,9 @@ export default function HomePage(props: HomePageProps) {
     }
 
     if (!isSupportedBundleUrl(normalizedUrl)) {
-      setInputError('Enter a valid http(s) bundle URL or a file://lynx local bundle URL.');
+      setInputError(
+        'Enter a valid http(s) bundle URL, a file://lynx local bundle URL, or a file://lynxrecorder URL.'
+      );
       return;
     }
 
