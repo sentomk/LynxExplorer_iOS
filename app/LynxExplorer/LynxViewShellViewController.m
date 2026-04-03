@@ -39,6 +39,11 @@ NSString *const kBackButtonImageDark = @"back_dark";
 @property(nonatomic, copy) NSString *frontendTheme;
 @property(nonatomic, strong) LynxView *lynxView;
 @property(nonatomic, assign) BOOL hasCompletedInitialLoad;
+@property(nonatomic, strong) UIView *statusBackgroundView;
+@property(nonatomic, strong) UIView *navigationBarView;
+@property(nonatomic, strong) UIButton *navigationBackButton;
+@property(nonatomic, strong) UIButton *navigationReloadButton;
+@property(nonatomic, strong) UILabel *navigationTitleLabel;
 @property(nonatomic, strong) UIView *loadFailureView;
 @property(nonatomic, strong) UILabel *loadFailureTitleLabel;
 @property(nonatomic, strong) UILabel *loadFailureMessageLabel;
@@ -287,6 +292,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
   UIView *statusView = [[UIView alloc] initWithFrame:CGRectMake(0, 0, screenSize.width, statusH)];
   statusView.backgroundColor = self.barColor;
   [self.view addSubview:statusView];
+  self.statusBackgroundView = statusView;
 
   if (self.hiddenNav) {
     return;
@@ -324,6 +330,12 @@ NSString *const kBackButtonImageDark = @"back_dark";
   [barView addSubview:titleLabel];
   [barView addSubview:reloadButton];
   [self.view addSubview:barView];
+
+  self.navigationBarView = barView;
+  self.navigationBackButton = goBackButton;
+  self.navigationReloadButton = reloadButton;
+  self.navigationTitleLabel = titleLabel;
+  [self updateNavigationAppearanceForFailureState:NO];
 }
 
 - (BOOL)shouldAutorotate {
@@ -448,52 +460,73 @@ NSString *const kBackButtonImageDark = @"back_dark";
 }
 
 - (UIColor *)failureBackgroundColor {
-  if (@available(iOS 13.0, *)) {
-    return UIColor.systemBackgroundColor;
-  }
-  return UIColor.whiteColor;
+  return [self shouldUseDarkFailureAppearance] ? [UIColor colorWithWhite:0.0 alpha:1.0]
+                                               : UIColor.whiteColor;
 }
 
 - (UIColor *)failurePanelColor {
-  if (@available(iOS 13.0, *)) {
-    return UIColor.secondarySystemBackgroundColor;
-  }
-  return [UIColor colorWithWhite:0.96 alpha:1.0];
+  return [self shouldUseDarkFailureAppearance] ? [UIColor colorWithWhite:0.12 alpha:1.0]
+                                               : [UIColor colorWithWhite:0.96 alpha:1.0];
 }
 
 - (UIColor *)failureInlinePanelColor {
-  if (@available(iOS 13.0, *)) {
-    return UIColor.tertiarySystemBackgroundColor;
-  }
-  return [UIColor colorWithWhite:0.93 alpha:1.0];
+  return [self shouldUseDarkFailureAppearance] ? [UIColor colorWithWhite:0.18 alpha:1.0]
+                                               : [UIColor colorWithWhite:0.93 alpha:1.0];
 }
 
 - (UIColor *)failurePrimaryTextColor {
-  if (@available(iOS 13.0, *)) {
-    return UIColor.labelColor;
-  }
-  return UIColor.blackColor;
+  return [self shouldUseDarkFailureAppearance] ? UIColor.whiteColor : UIColor.blackColor;
 }
 
 - (UIColor *)failureSecondaryTextColor {
-  if (@available(iOS 13.0, *)) {
-    return UIColor.secondaryLabelColor;
-  }
-  return [UIColor colorWithWhite:0.25 alpha:1.0];
+  return [self shouldUseDarkFailureAppearance] ? [UIColor colorWithWhite:0.82 alpha:1.0]
+                                               : [UIColor colorWithWhite:0.25 alpha:1.0];
 }
 
 - (UIColor *)failureTertiaryTextColor {
-  if (@available(iOS 13.0, *)) {
-    return UIColor.tertiaryLabelColor;
-  }
-  return [UIColor colorWithWhite:0.45 alpha:1.0];
+  return [self shouldUseDarkFailureAppearance] ? [UIColor colorWithWhite:0.62 alpha:1.0]
+                                               : [UIColor colorWithWhite:0.45 alpha:1.0];
 }
 
 - (UIColor *)failureAccentColor {
-  if (@available(iOS 13.0, *)) {
-    return UIColor.systemRedColor;
-  }
   return [UIColor colorWithRed:1.0 green:0.231 blue:0.188 alpha:1.0];
+}
+
+- (BOOL)shouldUseDarkFailureAppearance {
+  NSString *preferredTheme = [self getStorageItem:@"preferredTheme"];
+  if ([preferredTheme isEqualToString:@"Dark"]) {
+    return YES;
+  }
+  if ([preferredTheme isEqualToString:@"Light"]) {
+    return NO;
+  }
+  if ([self.frontendTheme isEqualToString:kBackButtonStyleDark]) {
+    return YES;
+  }
+  if ([self.frontendTheme isEqualToString:kBackButtonStyleLight]) {
+    return NO;
+  }
+  if (@available(iOS 13.0, *)) {
+    return self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark;
+  }
+  return NO;
+}
+
+- (void)updateNavigationAppearanceForFailureState:(BOOL)isFailureVisible {
+  UIColor *backgroundColor = isFailureVisible ? [self failureBackgroundColor] : self.barColor;
+  UIColor *foregroundColor = isFailureVisible ? [self failurePrimaryTextColor] : self.titleColor;
+  NSString *backImageName = isFailureVisible
+                                ? ([self shouldUseDarkFailureAppearance] ? kBackButtonImageDark
+                                                                         : kBackButtonImageLight)
+                                : self.backButtonImageName;
+
+  self.view.backgroundColor = backgroundColor;
+  self.statusBackgroundView.backgroundColor = backgroundColor;
+  self.navigationBarView.backgroundColor = backgroundColor;
+  self.navigationTitleLabel.textColor = foregroundColor;
+  [self.navigationReloadButton setTitleColor:foregroundColor forState:UIControlStateNormal];
+  UIImage *backImage = [self scaleImage:[UIImage imageNamed:backImageName] size:CGSizeMake(24, 24)];
+  [self.navigationBackButton setImage:backImage forState:UIControlStateNormal];
 }
 
 - (CGRect)contentFrameForCurrentPage {
@@ -693,6 +726,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
     strongSelf.loadFailureView.frame = [strongSelf contentFrameForCurrentPage];
     [strongSelf.view bringSubviewToFront:strongSelf.loadFailureView];
     strongSelf.lynxView.hidden = YES;
+    [strongSelf updateNavigationAppearanceForFailureState:YES];
   }];
 }
 
@@ -707,6 +741,7 @@ NSString *const kBackButtonImageDark = @"back_dark";
     strongSelf.loadFailureMessageLabel.text = @"";
     strongSelf.loadFailureMetadataLabel.text = @"";
     strongSelf.lynxView.hidden = NO;
+    [strongSelf updateNavigationAppearanceForFailureState:NO];
   }];
 }
 
